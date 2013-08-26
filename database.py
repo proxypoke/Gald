@@ -4,9 +4,13 @@
 import sqlite3
 import tempfile
 import atexit
+import os
 
 
 _conn = None
+
+SCHEMA_DIR = "schema"
+SCHEMA_SUFFIX = ".sql"
 
 
 class DatabaseError(Exception):
@@ -54,3 +58,11 @@ def commit():
     _conn.commit()
 
 
+def load_schema(name):
+    '''Load a schema for a table.'''
+    try:
+        filename = os.path.join(SCHEMA_DIR, name) + SCHEMA_SUFFIX
+        with open(filename) as sfile:
+            return sfile.read()
+    except:
+        raise DatabaseError("No such schema: {}.".format(name))
