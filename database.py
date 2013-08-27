@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
+#
+# Gald - a simple accounting tool
+#
+# Author: slowpoke <mail+git@slowpoke.io>
+#
+# This program is free software under the non-terms
+# of the Anti-License. Do whatever the fuck you want.
+#
+# Github: https://www.github.com/proxypoke/Gald
+# (Shortlink: https://git.io/gald)
 import sqlite3
 import tempfile
 import atexit
