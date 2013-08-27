@@ -54,32 +54,41 @@ class Account:
     def id(self):
         return self._id
 
+    @classmethod
+    def _check_column(self, column):
+        if column not in database.get_column_names("accounts"):
+            raise ValueError("Invalid column name: {}".format(column))
+
+    def _get_query(self, column):
+        '''Construct a getter query with sanitized inputs.'''
+        self._check_column(column)
+        c = database.cursor()
+        return c.execute("SELECT {} FROM Accounts WHERE id = ?".format(
+                         column), (self.id,)).fetchone()[0]
+
+    def _set_query(self, column, value):
+        '''Construct a setter query with sanitized inputs.'''
+        self._check_column(column)
+        c = database.cursor()
+        return c.execute("UPDATE Accounts SET {} = ? WHERE id = ?".format(
+                         column), (value, self.id))
+
     @property
     def name(self):
-        c = database.cursor()
-        # NOTE: it's ugly to duplicate this query in every property method, but
-        # sqlite can't parameterize column names, and string formatting is
-        # evil™. Thus, it's not possible to write a generic method to do this.
-        return c.execute("SELECT Name FROM Accounts WHERE id = (?)",
-                         (self.id,)).fetchone()["Name"]
+        return self._get_query("Name")
 
     @name.setter
     def name(self, value):
-        c = database.cursor()
-        c.execute("UPDATE Accounts SET Name = ? WHERE Id = ?",
-                  (value, self.id))
+        return self._set_query("Name", value)
 
     @property
     def balance(self):
-        c = database.cursor()
-        return c.execute("SELECT Balance FROM Accounts WHERE id = (?)",
-                         (self.id,)).fetchone()["Balance"]
+        return self._get_query("Balance")
 
     @balance.setter
     def balance(self, value):
-        c = database.cursor()
-        c.execute("UPDATE Accounts SET Balance = ? WHERE Id = ?",
-                  (value, self.id))
+        self._set_query("Balance", value)
+
 
 # purely for convenience
 new = Account.new
