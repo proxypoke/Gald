@@ -23,9 +23,10 @@ def init(file=None):
     if _conn is not None:
         raise DatabaseError(
             "Refusing to reinitialize database. Close it first.")
-    file = tempfile.mktemp() if file is None else file
+    file = tempfile.mktemp(prefix="gald_") if file is None else file
     try:
         _conn = sqlite3.connect(file)
+        _conn.row_factory = sqlite3.Row
     except sqlite3.OperationalError:
         return False
 
