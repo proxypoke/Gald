@@ -85,9 +85,9 @@ def load_schema(name):
 def get_table_names():
     '''Get a list of all table names.'''
     c = cursor()
-    return [row[0] for row in
-            # The rows returned from sqlite_master look like this:
-            # (type, name, tbl_name, rootpage, sql)
+    # The rows returned from sqlite_master look like this:
+    # (type, name, tbl_name, rootpage, sql)
+    return [row[0].lower() for row in
             # The second condition excludes all sqlite specific special tables.
             c.execute('''SELECT name FROM sqlite_master
                       WHERE type = "table"
@@ -98,7 +98,7 @@ def get_column_names(table):
     '''Get the column names of a table.'''
     c = cursor()
     # sanitize the query
-    if table not in get_table_names():
+    if table.lower() not in get_table_names():
         raise ValueError("Invalid table name: {}".format(table))
     # table_info() returns rows with (cid, name, type, notnull, dflt_value, pk)
     return [row[1] for row in
