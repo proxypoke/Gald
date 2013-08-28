@@ -15,21 +15,64 @@ import database
 from abc import ABCMeta, abstractmethod
 
 
+# type conversion map Python → SQLite
+_typemap = {
+    type(None): "NULL",
+    int:        "INTEGER",
+    float:      "REAL",
+    str:        "TEXT",
+    bytes:      "BLOB"}
+
+
 class Table(metaclass=ABCMeta):
     '''banana banana banana'''
 
+    # has the table been initialized in the database yet?
     __initialized = False
+
+    def __init__(self, rowid):
+        self._rowid = rowid
+
+    @property
+    def rowid(self):
+        return self._rowid
 
     @classmethod
     def _init(cls):
-        '''Initialize the table in the database.'''
+        '''Create a table in the database from the class' attributes.'''
         if cls.__initialized:
             return
-        c = database.cursor()
-        c.execute(database.load_schema(cls.__name__.lower()))
-        c.close()
-        database.commit()
-        __initialized = True
+
+        # get the column names from the class' attributes
+        cols = [var.lower() for var in dir(cls)
+                # exclude private attributes
+                if not var.startswith("_")
+                # exclude methods
+                and not hasattr(getattr(cls, var), "__call__")]
+        typemap = {col: type(getattr(cls, col)) for col in cols}
+
+        # begin constructing query & create all needed properties
+        lines = []  # the lines inside the CREATE TABLE block
+        for col, type_ in typemap.items():
+            # do not process cls.rowid unless it was overwritten
+            if col == "rowid" and type_ is property:
+                continue
+            # only process types which can be translated into SQLite types
+            if not type_ in _typemap:
+                raise TypeError(
+                    "Invalid type for SQLite: {} (in attribute {})".format(
+                        type_, col))
+            lines.append("{} {}".format(col, _typemap[type_]))
+            prop = property(
+                lambda self: self._get_query(col),
+                lambda self, val: self._set_query(col, val))
+            setattr(cls, col, prop)
+        query = "CREATE TABLE IF NOT EXISTS {} (\n".format(cls.__name__)
+        query += ",\n".join(lines)
+        query += " )"
+
+        database.cursor().execute(query)
+        cls.__initialized = True
 
     @classmethod
     @abstractmethod
@@ -57,7 +100,7 @@ class Table(metaclass=ABCMeta):
         column = column.lower()
         self._check_column(column)
         c = database.cursor()
-        return c.execute("SELECT {} FROM {} WHERE id = ?".format(
+        return c.execute("SELECT {} FROM {} WHERE _rowid_ = ?".format(
                          column, self.__class__.__name__),
                          (self.id,)).fetchone()[0]
 
@@ -66,5 +109,5 @@ class Table(metaclass=ABCMeta):
         column = column.lower()
         self._check_column(column)
         c = database.cursor()
-        return c.execute("UPDATE {} SET {} = ? WHERE id = ?".format(
+        return c.execute("UPDATE {} SET {} = ? WHERE _rowid_ = ?".format(
                          self.__class__.__name__, column), (value, self.id))
