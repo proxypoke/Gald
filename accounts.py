@@ -12,6 +12,7 @@
 # (Shortlink: https://git.io/gald)
 
 import database
+from table import Table
 
 
 def init():
@@ -22,7 +23,7 @@ def init():
     database.commit()
 
 
-class Account:
+class Accounts(Table):
     '''Represents a single location of money.
 
     This can be a bank account, cash or savings.'''
@@ -34,7 +35,7 @@ class Account:
         c.execute('''INSERT INTO Accounts
                 (name, balance) VALUES (?, ?)''', (name, balance))
         id = c.lastrowid
-        return Account(id)
+        return Accounts(id)
 
     @classmethod
     def from_id(cls, id):
@@ -45,7 +46,7 @@ class Account:
         row = c.execute("SELECT * FROM Accounts WHERE Id = ?", (id,)).fetchone()
         if row is None:
             raise IndexError("No such entry in the database.")
-        return Account(id)
+        return Accounts(id)
 
     def __init__(self, id):
         self._id = id
@@ -53,25 +54,6 @@ class Account:
     @property
     def id(self):
         return self._id
-
-    @classmethod
-    def _check_column(self, column):
-        if column not in database.get_column_names("accounts"):
-            raise ValueError("Invalid column name: {}".format(column))
-
-    def _get_query(self, column):
-        '''Construct a getter query with sanitized inputs.'''
-        self._check_column(column)
-        c = database.cursor()
-        return c.execute("SELECT {} FROM Accounts WHERE id = ?".format(
-                         column), (self.id,)).fetchone()[0]
-
-    def _set_query(self, column, value):
-        '''Construct a setter query with sanitized inputs.'''
-        self._check_column(column)
-        c = database.cursor()
-        return c.execute("UPDATE Accounts SET {} = ? WHERE id = ?".format(
-                         column), (value, self.id))
 
     @property
     def name(self):
@@ -91,5 +73,5 @@ class Account:
 
 
 # purely for convenience
-new = Account.new
-from_id = Account.from_id
+new = Accounts.new
+from_id = Accounts.from_id
