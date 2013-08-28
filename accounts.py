@@ -31,11 +31,7 @@ class Accounts(Table):
     @classmethod
     def new(cls, name, balance=0):
         '''Create a new account in the database.'''
-        c = database.cursor()
-        c.execute('''INSERT INTO Accounts
-                (name, balance) VALUES (?, ?)''', (name, balance))
-        id = c.lastrowid
-        return Accounts(id)
+        return super().new(("name", "balance"), (name, balance))
 
     @classmethod
     def from_id(cls, id):
@@ -49,6 +45,7 @@ class Accounts(Table):
         return Accounts(id)
 
     def __init__(self, id):
+        super().__init__()
         self._id = id
 
     @property

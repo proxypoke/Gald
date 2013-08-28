@@ -101,5 +101,5 @@ def get_column_names(table):
     if table.lower() not in get_table_names():
         raise ValueError("Invalid table name: {}".format(table))
     # table_info() returns rows with (cid, name, type, notnull, dflt_value, pk)
-    return [row[1] for row in
+    return [row[1].lower() for row in
             c.execute('''PRAGMA table_info({})'''.format(table)).fetchall()]
