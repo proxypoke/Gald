@@ -49,20 +49,22 @@ class Table(metaclass=ABCMeta):
                 if not var.startswith("_")
                 # exclude methods
                 and not hasattr(getattr(cls, var), "__call__")]
-        typemap = {col: type(getattr(cls, col)) for col in cols}
+        attrmap = {col: getattr(cls, col) for col in cols}
 
         # begin constructing query & create all needed properties
         lines = []  # the lines inside the CREATE TABLE block
-        for col, type_ in typemap.items():
-            # do not process cls.rowid unless it was overwritten
-            if col == "rowid" and type_ is property:
+        for col, attr in attrmap.items():
+            # do not process cls.rowid unless it was explicitly overwritten
+            if col == "rowid" and type(attr) is property:
                 continue
-            # only process types which can be translated into SQLite types
-            if not type_ in _typemap:
-                raise TypeError(
-                    "Invalid type for SQLite: {} (in attribute {})".format(
-                        type_, col))
-            lines.append("{} {}".format(col, _typemap[type_]))
+
+            # only a type was given, create a column with no default value
+            if type(attr) is type:
+                lines.append(cls._make_column_by_type(col, attr))
+            # otherwise, try to construct a column with default value
+            else:
+                lines.append(cls._make_column_by_value(col, attr))
+
             prop = property(
                 lambda self: self._get_query(col),
                 lambda self, val: self._set_query(col, val))
@@ -73,6 +75,25 @@ class Table(metaclass=ABCMeta):
 
         database.cursor().execute(query)
         cls.__initialized = True
+
+    @classmethod
+    def _make_column_by_type(cls, col, type_):
+        '''Create a line for a CREATE TABLE query with only a type.'''
+        t = cls._convert_or_raise(type_)
+        return "{} {}".format(col, t)
+
+    @classmethod
+    def _make_column_by_value(cls, col, val):
+        '''Create a line for a CREATE TABLE query with a default value.'''
+        t = cls._convert_or_raise(type(val))
+        return "{} {} DEFAULT {}".format(col, t, val)
+
+    @staticmethod
+    def _convert_or_raise(type_):
+        '''Convert a type into a SQLite type if possible, else raise.'''
+        if not type_ in _typemap:
+            raise TypeError( "Invalid type for SQLite: {}".format(type_))
+        return _typemap[type_]
 
     @classmethod
     @abstractmethod
@@ -102,7 +123,7 @@ class Table(metaclass=ABCMeta):
         c = database.cursor()
         return c.execute("SELECT {} FROM {} WHERE _rowid_ = ?".format(
                          column, self.__class__.__name__),
-                         (self.id,)).fetchone()[0]
+                         (self.rowid,)).fetchone()[0]
 
     def _set_query(self, column, value):
         '''Construct a setter query with sanitized inputs.'''
@@ -110,4 +131,4 @@ class Table(metaclass=ABCMeta):
         self._check_column(column)
         c = database.cursor()
         return c.execute("UPDATE {} SET {} = ? WHERE _rowid_ = ?".format(
-                         self.__class__.__name__, column), (value, self.id))
+                         self.__class__.__name__, column), (value, self.rowid))
