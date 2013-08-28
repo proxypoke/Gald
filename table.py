@@ -12,6 +12,7 @@
 # (Shortlink: https://git.io/gald)
 
 import database
+import types
 from abc import ABCMeta, abstractmethod
 
 
@@ -48,7 +49,8 @@ class Table(metaclass=ABCMeta):
                 # exclude private attributes
                 if not var.startswith("_")
                 # exclude methods
-                and not hasattr(getattr(cls, var), "__call__")]
+                and not (isinstance(getattr(cls, var), types.FunctionType)
+                         or isinstance(getattr(cls, var), types.MethodType))]
         attrmap = {col: getattr(cls, col) for col in cols}
 
         # begin constructing query & create all needed properties
@@ -64,17 +66,25 @@ class Table(metaclass=ABCMeta):
             # otherwise, try to construct a column with default value
             else:
                 lines.append(cls._make_column_by_value(col, attr))
+            # finally, add the new column to the class as a property
+            cls._add_prop(col)
 
-            prop = property(
-                lambda self: self._get_query(col),
-                lambda self, val: self._set_query(col, val))
-            setattr(cls, col, prop)
         query = "CREATE TABLE IF NOT EXISTS {} (\n".format(cls.__name__)
         query += ",\n".join(lines)
         query += " )"
+        # save the query for later review
+        cls.__schema__ = property(lambda _: query)
 
         database.cursor().execute(query)
         cls.__initialized = True
+
+    @classmethod
+    def _add_prop(cls, col):
+        '''Add a property to this class.'''
+        prop = property(
+            lambda self: self._get_query(col),
+            lambda self, val: self._set_query(col, val))
+        setattr(cls, col, prop)
 
     @classmethod
     def _make_column_by_type(cls, col, type_):
