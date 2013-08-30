@@ -25,6 +25,21 @@ _typemap = {
     bytes:      "BLOB"}
 
 
+class PrimaryKey:
+    '''Used to create PRIMARY KEY columns in a table.'''
+
+    def __init__(self, type, default=None):
+        self._sqltype = Table._convert_or_raise(type)
+        self._default = default
+
+    def __str__(self):
+        s = "{} PRIMARY KEY".format(self._sqltype)
+        if self._default is None:
+            return s
+        else:
+            return " ".join([s, "DEFAULT '{}'".format(self._default)])
+
+
 class Table(metaclass=ABCMeta):
     '''banana banana banana'''
 
