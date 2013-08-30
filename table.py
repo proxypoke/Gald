@@ -41,7 +41,55 @@ class PrimaryKey:
 
 
 class Table(metaclass=ABCMeta):
-    '''banana banana banana'''
+    '''A simple database abstraction layer.
+
+    Table makes it possible to specify SQL tables and interact with them as
+    Python classes and objects.
+
+    To create a new table, subclass this class and specify the columns of the
+    the as attributes of the class:
+
+    class Foobar(Table):
+        foo = str
+        bar = int
+        baz = 3.1415265
+        spam = b'eggs'
+        null = None
+
+    As you can probably see, types of a table are specified either as a Python
+    type (such as str) or inferred from their default values.
+
+    Table currently support all types that SQLite supports. This is the
+    conversion table:
+
+        - NULL      ←→ None
+        - INTEGER   ←→ int
+        - REAL      ←→ float
+        - TEXT      ←→ str
+        - BLOB      ←→ bytes
+
+    If a value is given instead of a type, then the type is inferred from that
+    value, and it is used as the column's DEFAULT parameter.
+
+    For example, specifying
+
+        foo = str
+
+    will result in this line in the schema:
+
+        foo TEXT
+
+    whereas
+
+        foo = "bar"
+
+    will generate this line:
+
+        foo TEXT DEFAULT "bar"
+
+    Support for things like PRIMARY KEY, AUTOINCREMENT, or UNIQUE are planned,
+    but not yet implemented.
+    '''
 
     # has the table been initialized in the database yet?
     __initialized = False
