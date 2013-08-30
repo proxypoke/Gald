@@ -137,6 +137,18 @@ class Table(metaclass=ABCMeta):
         return cls(c.lastrowid)
 
     @classmethod
+    def from_id(cls, id):
+        '''Create an object from an existing id in the database.'''
+        c = database.cursor()
+        # NOTE: for queries with a single ?-value, execute wants a string or a
+        # sequence.
+        row = c.execute("SELECT * FROM {} WHERE _rowid_ = ?".format(cls.__name__),
+                        (id,)).fetchone()
+        if row is None:
+            raise IndexError("No such entry in the database.")
+        return cls(id)
+
+    @classmethod
     def _check_column(cls, column):
         if column not in database.get_column_names(cls.__name__):
             raise ValueError("Invalid column name: {}".format(column))

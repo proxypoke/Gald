@@ -28,17 +28,6 @@ class Accounts(Table):
         '''Create a new account in the database.'''
         return super().new(("name", "balance"), (name, balance))
 
-    @classmethod
-    def from_id(cls, id):
-        '''Create an account object from an existing id in the database.'''
-        c = database.cursor()
-        # NOTE: for queries with a single ?-value, execute wants a string or a
-        # sequence.
-        row = c.execute("SELECT * FROM Accounts WHERE Id = ?", (id,)).fetchone()
-        if row is None:
-            raise IndexError("No such entry in the database.")
-        return Accounts(id)
-
 # purely for convenience
 new = Accounts.new
 from_id = Accounts.from_id
