@@ -24,20 +24,58 @@ _typemap = {
     str:        "TEXT",
     bytes:      "BLOB"}
 
+class Constraint(metaclass=ABCMeta):
+    '''Meta class for column constraints.'''
 
-class PrimaryKey:
-    '''Used to create PRIMARY KEY columns in a table.'''
-
-    def __init__(self, type, default=None):
-        self._sqltype = Table._convert_or_raise(type)
-        self._default = default
-
-    def __str__(self):
-        s = "{} PRIMARY KEY".format(self._sqltype)
-        if self._default is None:
-            return s
+    @abstractmethod
+    def __init__(self, type_or_val, keyword):
+        self._default = None
+        # see if we have a default value
+        if type(type_or_val) in _typemap.keys():
+            self._default = type_or_val
+            type_or_val = type(type_or_val)
+        # if the argument is a basic type, try to convert it to SQLite type and
+        # construct a query with that type
+        if type(type_or_val) is type:
+            sqltype = Table._convert_or_raise(type_or_val)
+            self._query = " ".join((
+                "'{}'",
+                sqltype,
+                keyword))
+        # otherwise, if it's a restriction, add its query to the current query
+        elif isinstance(type_or_val, Constraint):
+            self._query = "{} {}".format(type_or_val._query, keyword)
+        # otherwise, tell the caller that it's doing bullshit
         else:
-            return " ".join([s, "DEFAULT '{}'".format(self._default)])
+            raise TypeError(
+                "Invalid type or value supplied: {}".format(type_or_val))
+        # lastly, if there was a default value, add it to the query
+        if self._default is not None:
+            self._query = '{} DEFAULT "{}"'.format(self._query, self._default)
+
+    def __call__(self, column):
+        return self._query.format(column)
+
+
+class Unique(Constraint):
+    '''Used to create a column with the UNIQUE constraint.'''
+
+    def __init__(self, type_or_val):
+        super().__init__(type_or_val, "UNIQUE")
+
+
+class PrimaryKey(Constraint):
+    '''Used to create a column with the PRIMARY KEY constraint.'''
+
+    def __init__(self, type_or_val):
+        super().__init__(type_or_val, "PRIMARY KEY")
+
+
+class NotNull(Constraint):
+    '''Used to create a column with the NOT NULL constraint.'''
+
+    def __init__(self, type_or_val):
+        super().__init__(type_or_val, "NOT NULL")
 
 
 class Table(metaclass=ABCMeta):
@@ -52,7 +90,7 @@ class Table(metaclass=ABCMeta):
     class Foobar(Table):
         foo = str
         bar = int
-        baz = 3.1415265
+        baz = 3.14159265
         spam = b'eggs'
         null = None
 
